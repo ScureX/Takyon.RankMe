@@ -146,8 +146,8 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	string killModifiers = format("[%s%s]", headshot ? "-HS-" : "-", noscope ? "NS-" : "")
 
 	// message Darth Elmo (1056) got 6 points for killing Takyon (1230) [HS,NS,100] 
-	Chat_ServerPrivateMessage(victim, format("%s (%i) got %i Points %s for killing you (%i) (%sm)", attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist))
-	Chat_ServerPrivateMessage(attacker, format("You (%i) got %i Points %s for killing %s (%i) (%sm)", attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist))
+	Chat_ServerPrivateMessage(victim, format("%s (%i) got %i Points %s for killing you (%i) (%sm)", attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist), false)
+	Chat_ServerPrivateMessage(attacker, format("You (%i) got %i Points %s for killing %s (%i) (%sm)", attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
 }
 
 void function RM_OnPlayerSpawned(entity player){
