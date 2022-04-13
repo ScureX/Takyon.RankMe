@@ -6,6 +6,8 @@ global struct RM_PlayerData{
 	int kills = 0
 	int deaths = 0
 	int points = 1000
+	bool track = true // should track stats
+	bool pointFeed = true // should send the kill msg with points n all
 }
 
 const string path = "../R2Northstar/mods/Takyon.RankMe/mod/scripts/vscripts/takyon_rankme_cfg.nut" // where the config is stored
@@ -30,7 +32,7 @@ void function RM_LeaderBoard(entity player){
 	int loopAmount = GetConVarInt("rm_cfg_leaderboard_amount") > rm_sortedConfig.len() ? rm_sortedConfig.len() : GetConVarInt("rm_cfg_leaderboard_amount")
 
 	for(int i = 0; i < loopAmount; i++){
-		//Chat_ServerPrivateMessage(player, "[" + (i+1) + "] " + rm_sortedConfig[i].name + ": \x1b[38;2;75;245;66m" + SpeedToKmh(sqrt(rm_sortedConfig[i].speed)) + "kmh\x1b[0m/\x1b[38;2;75;245;66m" + SpeedToMph(sqrt(rm_sortedConfig[i].speed)) + "mph", false)
+		Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%ix1b[0m] (%f) %i Points", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, rm_sortedConfig[i].kills/rm_sortedConfig[i].deaths, rm_sortedConfig[i].points) ,false)
 	}
 }
 
@@ -83,12 +85,12 @@ void function RM_SaveConfig(){
 	// logic for comparing, only save new vals if higher or not existent
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
 		if(ShouldSavePlayerInConfig(pd)){
-			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points))
+			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track, pd.pointFeed))
 		}
 		else {
 			foreach(RM_PlayerData pdcfg in rm_cfg_players){ // loop through config
 				if(pdcfg.uid == pd.uid){ // find players config
-					DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pdcfg.name, pdcfg.uid, pdcfg.kills, pdcfg.deaths, pdcfg.points))
+					DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pdcfg.name, pdcfg.uid, pdcfg.kills + pd.kills, pdcfg.deaths + pd.deaths, pdcfg.points + pd.points))
 					break
 				}
 			}
@@ -109,7 +111,7 @@ void function RM_SaveConfig(){
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// check if victim is attacker
 	if(victim.GetUID() == attacker.GetUID()){
-		//return
+		return
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
@@ -121,12 +123,16 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	int attackerPoints = 0
 	int victimPoints = 0
 
+	bool showMsgToVictim = true
+	bool showMsgToAttacker = true
+
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
 			if(victim.uid == pd.uid){ // find victim's data
 				pd.deaths++
 				pd.points -= 3
 				victimPoints = pd.points
+				showMsgToVictim = pd.track && pd.pointFeed
 			}
 
 			if(attacker.uid == pd.uid){ // find attacker's data
@@ -138,6 +144,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 				if(speed > 100) pd.points += 1 // 1 extra for being fast
 				if(speed > 200) pd.points += 1 // 1 extra for being fast
 				attackerPoints = pd.points
+				showMsgToAttacker = pd.track && pd.pointFeed
 			}
 		}catch(e){}
 	}
@@ -145,9 +152,11 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// kill modifiers
 	string killModifiers = format("[%s%s]", headshot ? "-HS-" : "-", noscope ? "NS-" : "")
 
-	// message Darth Elmo (1056) got 6 points for killing Takyon (1230) [HS,NS,100] 
-	Chat_ServerPrivateMessage(victim, format("%s (%i) got %i Points %s for killing you (%i) (%sm)", attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist), false)
-	Chat_ServerPrivateMessage(attacker, format("You (%i) got %i Points %s for killing %s (%i) (%sm)", attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
+	// message players
+	if(showMsgToVictim)
+		Chat_ServerPrivateMessage(victim, format("%s (%i) got %i Points %s for killing you (%i) (%sm)", attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist), false)
+	if(showMsgToAttacker)
+		Chat_ServerPrivateMessage(attacker, format("You (%i) got %i Points %s for killing %s (%i) (%sm)", attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
 }
 
 void function RM_OnPlayerSpawned(entity player){
@@ -161,6 +170,21 @@ void function RM_OnPlayerSpawned(entity player){
 	}
 
 	if(!found){
+		foreach(RM_PlayerData pd in rm_cfg_players){
+			if(player.GetUID == pd.uid){ // if player in config, load player stats
+				RM_PlayerData tmp
+				tmp.name = player.GetPlayerName()
+				tmp.uid = player.GetUID()
+				tmp.kills = pd.kills
+				tmp.deaths = pd.deaths
+				tmp.points = pd.points
+				tmp.track = pd.track
+				tmp.pointFeed = pd.pointFeed
+				rm_playerData.append(tmp)
+				return
+			}
+		}
+		// player not yet in config
 		RM_PlayerData tmp
 		tmp.name = player.GetPlayerName()
 		tmp.uid = player.GetUID()
