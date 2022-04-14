@@ -27,7 +27,7 @@ void function RM_LeaderBoard(entity player){
 
 	array<RM_PlayerData> rm_sortedConfig = rm_cfg_players // sort config in new array to not fuck with other shit
 	rm_sortedConfig.sort(RankMeSort)
-	Chat_ServerPrivateMessage(player, "\x1b[34m[RankMe] \x1b[38;2;0;220;30mAll-Time Leaderboard", false)
+	Chat_ServerPrivateMessage(player, "\x1b[34m[RankMe] \x1b[38;2;0;220;30mTop Leaderboard", false)
 
 	int loopAmount = GetConVarInt("rm_cfg_leaderboard_amount") > rm_sortedConfig.len() ? rm_sortedConfig.len() : GetConVarInt("rm_cfg_leaderboard_amount")
 
@@ -54,6 +54,22 @@ void function RM_PointFeedToggle(entity player){
 			pd.pointFeed = !pd.pointFeed
 			Chat_ServerPrivateMessage(player, format("\x1b[34m[RankMe]\n\x1b[0mTracking is now %s. Settings will apply on map-reload", pd.track ? "enabled" : "disabled"), false)
 			RM_SaveConfig()
+		}
+	}
+}
+
+void function RM_Rank(entity player){
+	RM_CfgInit() // load config
+
+	array<RM_PlayerData> rm_sortedConfig = rm_cfg_players // sort config in new array to not fuck with other shit
+	rm_sortedConfig.sort(RankMeSort)
+
+	for(int i = 0; i < rm_sortedConfig.len(); i++){
+		if(rm_sortedConfig[i].uid == player.GetUID()){
+			int deaths = rm_sortedConfig[i].deaths == 0 ? 1 : rm_sortedConfig[i].deaths // aboid division through 0
+			string kd = format("%.2f", rm_sortedConfig[i].kills*1.0/deaths*1.0)
+			Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%i\x1b[0m] (%s) \x1b[38;2;0;220;30m%i \x1b[0mPoints", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, kd, rm_sortedConfig[i].points) ,false)
+			break
 		}
 	}
 }
@@ -94,6 +110,9 @@ ClServer_MessageStruct function RM_ChatCallback(ClServer_MessageStruct message) 
 		}
 		else if(cmd == "rankme"){
 			RM_Help(message.player)
+		}
+		else if(cmd == "rank"){
+			RM_Rank(message.player)
 		}
     }
     return message
@@ -164,7 +183,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
-		return // REM
+		//return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
@@ -183,15 +202,17 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
 			if(victim.GetUID() == pd.uid){ // find victim's data // REM
+				showMsgToVictim = pd.track && pd.pointFeed
 				if(pd.track){
 					pd.deaths++
 					pd.points -= 3
 					victimPoints = pd.points
-					showMsgToVictim = pd.track && pd.pointFeed
+					
 				}
 			}
 
 			if(attacker.GetUID() == pd.uid){ // find attacker's data // REM
+				showMsgToAttacker = pd.track && pd.pointFeed
 				if(pd.track){
 					pd.kills++
 					attackerPointsBefore = pd.points
@@ -201,7 +222,6 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 					if(speed > 100) pd.points += 1 // 1 extra for being fast
 					if(speed > 200) pd.points += 1 // 1 extra for being fast
 					attackerPoints = pd.points
-					showMsgToAttacker = pd.track && pd.pointFeed
 				}
 			}
 		}catch(e){print("[RankMe] couldnt save points: " + e)}
