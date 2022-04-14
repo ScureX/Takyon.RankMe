@@ -120,14 +120,12 @@ void function RM_SaveConfig(){
 		bool found = false
 		foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
 			if(pdcfg.uid == pd.uid){ // player in live match is in cfg // REM 
-				print("saving live player")
 				DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track.tostring(), pd.pointFeed.tostring()))
 				found = true
 			}
 		}
 
 		if(!found){
-			print("saving from cfg")
 			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pdcfg.name, pdcfg.uid, pdcfg.kills, pdcfg.deaths, pdcfg.points, pdcfg.track.tostring(), pdcfg.pointFeed.tostring()))
 		}
 	}
@@ -138,6 +136,7 @@ void function RM_SaveConfig(){
     DevP4Checkout(path)
 	DevTextBufferDumpToFile(path)
 	DevP4Add(path)
+	print("[RankMe] Saving config at " + path)
 }
 
 /*
@@ -206,20 +205,16 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 }
 
 void function RM_OnPlayerSpawned(entity player){
-	print("\n\n\n\nPLAYER SPAWNEED\n\n\n\n")
 	foreach(RM_PlayerData pd in rm_playerData){ // check if in live data
 		try{
 			if(player.GetUID() == pd.uid){ // REM
-				print("player already in live cfg")
 				return
 			}
 		} catch(e){print("[RM] " + e)}
 	}
-	print("not in live cfg")
 	RM_CfgInit()
 	foreach(RM_PlayerData pd in rm_cfg_players){
 		if(player.GetUID() == pd.uid){ // if player in config, load player stats // REM
-			print("loading from cfg")
 			RM_PlayerData tmp
 			tmp.name = player.GetPlayerName() // maybe they changed their name? idk just gonna do it like this
 			tmp.uid = pd.uid
@@ -232,7 +227,6 @@ void function RM_OnPlayerSpawned(entity player){
 			return
 		}
 	}
-	print("not in cfg")
 	// player not yet in config
 	RM_PlayerData tmp
 	tmp.name = player.GetPlayerName()
