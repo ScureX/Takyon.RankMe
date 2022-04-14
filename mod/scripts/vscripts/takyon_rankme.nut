@@ -165,22 +165,26 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
 			if(victim.GetUID() == pd.uid){ // find victim's data // REM
-				pd.deaths++
-				pd.points -= 3
-				victimPoints = pd.points
-				showMsgToVictim = pd.track && pd.pointFeed
+				if(pd.track){
+					pd.deaths++
+					pd.points -= 3
+					victimPoints = pd.points
+					showMsgToVictim = pd.track && pd.pointFeed
+				}
 			}
 
 			if(attacker.GetUID() == pd.uid){ // find attacker's data // REM
-				pd.kills++
-				attackerPointsBefore = pd.points
-				pd.points += 3
-				if(noscope && dist >= 50) pd.points += 1 // 1 extra for noscopes above 50m
-				if(headshot) pd.points += 1 // 1 extra for headshots
-				if(speed > 100) pd.points += 1 // 1 extra for being fast
-				if(speed > 200) pd.points += 1 // 1 extra for being fast
-				attackerPoints = pd.points
-				showMsgToAttacker = pd.track && pd.pointFeed
+				if(pd.track){
+					pd.kills++
+					attackerPointsBefore = pd.points
+					pd.points += 3
+					if(noscope && dist >= 50) pd.points += 1 // 1 extra for noscopes above 50m
+					if(headshot) pd.points += 1 // 1 extra for headshots
+					if(speed > 100) pd.points += 1 // 1 extra for being fast
+					if(speed > 200) pd.points += 1 // 1 extra for being fast
+					attackerPoints = pd.points
+					showMsgToAttacker = pd.track && pd.pointFeed
+				}
 			}
 		}catch(e){print("[RankMe] couldnt save points: " + e)}
 	}
