@@ -32,8 +32,33 @@ void function RM_LeaderBoard(entity player){
 	int loopAmount = GetConVarInt("rm_cfg_leaderboard_amount") > rm_sortedConfig.len() ? rm_sortedConfig.len() : GetConVarInt("rm_cfg_leaderboard_amount")
 
 	for(int i = 0; i < loopAmount; i++){
-		Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%ix1b[0m] (%f) %i Points", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, rm_sortedConfig[i].kills/rm_sortedConfig[i].deaths, rm_sortedConfig[i].points) ,false)
+		int deaths = rm_sortedConfig[i].deaths == 0 ? 1 : rm_sortedConfig[i].deaths // aboid division through 0
+		Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%i\x1b[0m] (%f) \x1b[38;2;0;220;30m%i \x1b[0mPoints", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, rm_sortedConfig[i].kills/deaths, rm_sortedConfig[i].points) ,false)
 	}
+}
+
+void function RM_TrackToggle(entity player){
+	foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
+		if(pd.uid == player.GetUID()){ // player in live match is in cfg // REM 
+			pd.track = !pd.track
+			Chat_ServerPrivateMessage(player, format("\x1b[34m[RankMe]\n\x1b[0mTracking of your points is now %s. Settings will apply on map-reload", pd.track ? "enabled" : "disabled"), false)
+			RM_SaveConfig()
+		}
+	}
+}
+
+void function RM_PointFeedToggle(entity player){
+	foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
+		if(pd.uid == player.GetUID()){ // player in live match is in cfg // REM 
+			pd.pointFeed = !pd.pointFeed
+			Chat_ServerPrivateMessage(player, format("\x1b[34m[RankMe]\n\x1b[0mTracking is now %s. Settings will apply on map-reload", pd.track ? "enabled" : "disabled"), false)
+			RM_SaveConfig()
+		}
+	}
+}
+
+void function RM_Help(entity player){
+	Chat_ServerPrivateMessage(player, "\x1b[34m[RankMe]\n\x1b[0mLeaderboard: !top\nToggle Tracking: !track\nToggle Points-Msg: !pointfeed",false)
 }
 
 /*
@@ -59,6 +84,15 @@ ClServer_MessageStruct function RM_ChatCallback(ClServer_MessageStruct message) 
         // command logic
 		if(cmd == "top"){
 			RM_LeaderBoard(message.player)
+		} 
+		else if(cmd == "track"){
+			RM_TrackToggle(message.player)
+		}
+		else if(cmd == "pointfeed"){
+			RM_PointFeedToggle(message.player)
+		}
+		else if(cmd == "rankme"){
+			RM_Help(message.player)
 		}
     }
     return message
@@ -74,28 +108,30 @@ const string RM_HEADER = "global function RM_CfgInit\n" +
 						 "rm_cfg_players.clear()\n"
 
 const string RM_FOOTER = "}\n\n" +
-						 "void function AddPlayer(string name, string uid, int kills, int deaths, int points){\n" +
-						 "RM_PlayerData tmp\ntmp.name = name\ntmp.uid = uid\ntmp.kills = kills\ntmp.deaths = deaths\ntmp.points = points\rm_cfg_players.append(tmp)\n" +
+						 "void function AddPlayer(string name, string uid, int kills, int deaths, int points, bool track, bool pointFeed){\n" +
+						 "RM_PlayerData tmp;\ntmp.name = name;\ntmp.uid = uid;\ntmp.kills = kills;\ntmp.deaths = deaths;\ntmp.points = points;\rtmp.track = track;\ntmp.pointFeed = pointFeed;\nrm_cfg_players.append(tmp);\n" +
 						 "}"
 
 void function RM_SaveConfig(){
 	DevTextBufferClear()
 	DevTextBufferWrite(RM_HEADER)
 
-	// logic for comparing, only save new vals if higher or not existent
-	foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
-		if(ShouldSavePlayerInConfig(pd)){
-			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track, pd.pointFeed))
-		}
-		else {
-			foreach(RM_PlayerData pdcfg in rm_cfg_players){ // loop through config
-				if(pdcfg.uid == pd.uid){ // find players config
-					DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i)\n", pdcfg.name, pdcfg.uid, pdcfg.kills + pd.kills, pdcfg.deaths + pd.deaths, pdcfg.points + pd.points))
-					break
-				}
+	foreach(RM_PlayerData pdcfg in rm_cfg_players){ // loop through each player in cfg
+		bool found = false
+		foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
+			if(pdcfg.uid == pd.uid){ // player in live match is in cfg // REM 
+				print("saving live player")
+				DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track.tostring(), pd.pointFeed.tostring()))
+				found = true
 			}
 		}
+
+		if(!found){
+			print("saving from cfg")
+			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pdcfg.name, pdcfg.uid, pdcfg.kills, pdcfg.deaths, pdcfg.points, pdcfg.track.tostring(), pdcfg.pointFeed.tostring()))
+		}
 	}
+	
 
     DevTextBufferWrite(RM_FOOTER)
 
@@ -109,13 +145,13 @@ void function RM_SaveConfig(){
  */
 
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
-	// check if victim is attacker
+	// check if victim is attacker or if its a replay
 	if(victim.GetUID() == attacker.GetUID()){
-		return
+		return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
-	bool noscope = attacker.GetZoomFrac() < 0.6
+	bool noscope = attacker.GetZoomFrac() < 0.2 // leave a bit of room i guess, not workin on longer shots tho
 	int dist = ((DamageInfo_GetDistFromAttackOrigin(damageInfo) * 0.01904 * (4/3)) * 3.28084).tointeger()
 	int speed = GetPlayerSpeedInKmh(attacker).tointeger()
 
@@ -128,14 +164,14 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
-			if(victim.uid == pd.uid){ // find victim's data
+			if(victim.GetUID() == pd.uid){ // find victim's data // REM
 				pd.deaths++
 				pd.points -= 3
 				victimPoints = pd.points
 				showMsgToVictim = pd.track && pd.pointFeed
 			}
 
-			if(attacker.uid == pd.uid){ // find attacker's data
+			if(attacker.GetUID() == pd.uid){ // find attacker's data // REM
 				pd.kills++
 				attackerPointsBefore = pd.points
 				pd.points += 3
@@ -146,60 +182,69 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 				attackerPoints = pd.points
 				showMsgToAttacker = pd.track && pd.pointFeed
 			}
-		}catch(e){}
+		}catch(e){print("[RankMe] couldnt save points: " + e)}
 	}
 
 	// kill modifiers
 	string killModifiers = format("[%s%s]", headshot ? "-HS-" : "-", noscope ? "NS-" : "")
 
 	// message players
-	if(showMsgToVictim)
-		Chat_ServerPrivateMessage(victim, format("%s (%i) got %i Points %s for killing you (%i) (%sm)", attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist), false)
+	if(showMsgToVictim){
+		Chat_ServerPrivateMessage(victim, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing you (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
+		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victimPoints, dist), false)
+	}
+		
 	if(showMsgToAttacker)
-		Chat_ServerPrivateMessage(attacker, format("You (%i) got %i Points %s for killing %s (%i) (%sm)", attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
+		Chat_ServerPrivateMessage(attacker, format("You (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
+		attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
+	
+	RM_SaveConfig()
 }
 
 void function RM_OnPlayerSpawned(entity player){
-	bool found = false
-	foreach(RM_PlayerData pd in rm_playerData){
+	print("\n\n\n\nPLAYER SPAWNEED\n\n\n\n")
+	foreach(RM_PlayerData pd in rm_playerData){ // check if in live data
 		try{
-			if(player.GetPlayerName() == pd.name){
-				found = true
-			}
-		} catch(e){}
-	}
-
-	if(!found){
-		foreach(RM_PlayerData pd in rm_cfg_players){
-			if(player.GetUID == pd.uid){ // if player in config, load player stats
-				RM_PlayerData tmp
-				tmp.name = player.GetPlayerName()
-				tmp.uid = player.GetUID()
-				tmp.kills = pd.kills
-				tmp.deaths = pd.deaths
-				tmp.points = pd.points
-				tmp.track = pd.track
-				tmp.pointFeed = pd.pointFeed
-				rm_playerData.append(tmp)
+			if(player.GetUID() == pd.uid){ // REM
+				print("player already in live cfg")
 				return
 			}
-		}
-		// player not yet in config
-		RM_PlayerData tmp
-		tmp.name = player.GetPlayerName()
-		tmp.uid = player.GetUID()
-		rm_playerData.append(tmp)
+		} catch(e){print("[RM] " + e)}
 	}
+	print("not in live cfg")
+	RM_CfgInit()
+	foreach(RM_PlayerData pd in rm_cfg_players){
+		if(player.GetUID() == pd.uid){ // if player in config, load player stats // REM
+			print("loading from cfg")
+			RM_PlayerData tmp
+			tmp.name = player.GetPlayerName() // maybe they changed their name? idk just gonna do it like this
+			tmp.uid = pd.uid
+			tmp.kills = pd.kills
+			tmp.deaths = pd.deaths
+			tmp.points = pd.points
+			tmp.track = pd.track
+			tmp.pointFeed = pd.pointFeed
+			rm_playerData.append(tmp)
+			return
+		}
+	}
+	print("not in cfg")
+	// player not yet in config
+	RM_PlayerData tmp
+	tmp.name = player.GetPlayerName()
+	tmp.uid = player.GetUID() 
+	tmp.points = 1000
+	rm_playerData.append(tmp)
 }
 
 void function RM_OnPlayerDisconnected(entity player){
-	for(int i = 0; i < rm_playerData.len(); i++){
+	/*for(int i = 0; i < rm_playerData.len(); i++){
 		try{
-			if(player.GetPlayerName() == rm_playerData[i].name){
+			if(player.GetPlayerName() == rm_playerData[i].name){ // REM
 				//rm_playerData.remove(i)
 			}
 		} catch(e){}
-	}
+	}*/
 }
 
 /*
