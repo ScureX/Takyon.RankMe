@@ -15,7 +15,7 @@ array<RM_PlayerData> rm_playerData = [] // data from current match
 
 void function RankMeInit(){
 	AddCallback_OnReceivedSayTextMessage(RM_ChatCallback)
-
+	
 	AddCallback_OnPlayerRespawned(RM_OnPlayerSpawned)
     AddCallback_OnClientDisconnected(RM_OnPlayerDisconnected)
 	AddCallback_OnPlayerKilled(RM_OnPlayerKilled)
@@ -113,24 +113,36 @@ const string RM_FOOTER = "}\n\n" +
 						 "}"
 
 void function RM_SaveConfig(){
-	DevTextBufferClear()
-	DevTextBufferWrite(RM_HEADER)
+	RM_CfgInit()
+
+	array<RM_PlayerData> offlinePlayersToSave = []
 
 	foreach(RM_PlayerData pdcfg in rm_cfg_players){ // loop through each player in cfg
 		bool found = false
 		foreach(RM_PlayerData pd in rm_playerData){ // loop through each player in current match
 			if(pdcfg.uid == pd.uid){ // player in live match is in cfg // REM 
-				DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track.tostring(), pd.pointFeed.tostring()))
 				found = true
 			}
 		}
 
 		if(!found){
-			DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pdcfg.name, pdcfg.uid, pdcfg.kills, pdcfg.deaths, pdcfg.points, pdcfg.track.tostring(), pdcfg.pointFeed.tostring()))
+			offlinePlayersToSave.append(pdcfg)
 		}
 	}
 	
+	// merge live and offline players
+	array<RM_PlayerData> allPlayersToSave = []
+	allPlayersToSave.extend(rm_playerData)
+	allPlayersToSave.extend(offlinePlayersToSave)
 
+	// write to buffer
+	DevTextBufferClear()
+	DevTextBufferWrite(RM_HEADER)
+
+	foreach(RM_PlayerData pd in allPlayersToSave){
+		DevTextBufferWrite(format("AddPlayer(\"%s\", \"%s\", %i, %i, %i, %s, %s)\n", pd.name, pd.uid, pd.kills, pd.deaths, pd.points, pd.track.tostring(), pd.pointFeed.tostring()))	
+	}
+	
     DevTextBufferWrite(RM_FOOTER)
 
     DevP4Checkout(path)
@@ -146,7 +158,7 @@ void function RM_SaveConfig(){
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// check if victim is attacker or if its a replay
 	if(victim.GetUID() == attacker.GetUID()){
-		return // REM
+		//return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
