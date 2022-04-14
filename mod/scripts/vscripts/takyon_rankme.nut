@@ -33,7 +33,8 @@ void function RM_LeaderBoard(entity player){
 
 	for(int i = 0; i < loopAmount; i++){
 		int deaths = rm_sortedConfig[i].deaths == 0 ? 1 : rm_sortedConfig[i].deaths // aboid division through 0
-		Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%i\x1b[0m] (%f) \x1b[38;2;0;220;30m%i \x1b[0mPoints", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, rm_sortedConfig[i].kills/deaths, rm_sortedConfig[i].points) ,false)
+		string kd = format("%.2f", rm_sortedConfig[i].kills*1.0/deaths*1.0)
+		Chat_ServerPrivateMessage(player, format("[%i] %s: [\x1b[38;2;0;220;30m%i/\x1b[38;2;220;20;20m%i\x1b[0m] (%s) \x1b[38;2;0;220;30m%i \x1b[0mPoints", i+1, rm_sortedConfig[i].name, rm_sortedConfig[i].kills, rm_sortedConfig[i].deaths, kd, rm_sortedConfig[i].points) ,false)
 	}
 }
 
@@ -162,10 +163,8 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
-	bool noscope = false
-	try{ // have to do try catch for kill cmd or else crash
-		noscope = attacker.GetZoomFrac() < 0.2 && DamageInfo_GetWeapon(damageInfo).GetWeaponClassName() == "mp_weapon_sniper"   // leave a bit of room i guess, not workin on longer shots tho
-	} catch(e){}
+	bool noscope = attacker.GetZoomFrac() < 0.2 // leave a bit of room i guess, not workin on longer shots tho
+	
 	int dist = ((DamageInfo_GetDistFromAttackOrigin(damageInfo) * 0.01904 * (4/3)) * 3.28084).tointeger()
 	int speed = GetPlayerSpeedInKmh(attacker).tointeger()
 
