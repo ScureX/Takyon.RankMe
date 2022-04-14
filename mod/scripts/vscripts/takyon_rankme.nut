@@ -199,7 +199,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	}
 		
 	if(showMsgToAttacker)
-		Chat_ServerPrivateMessage(attacker, format("You (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
+		Chat_ServerPrivateMessage(attacker, format("You (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
 		attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
 	
 	RM_SaveConfig()
