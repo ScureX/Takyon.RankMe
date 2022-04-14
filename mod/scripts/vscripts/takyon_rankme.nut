@@ -157,7 +157,12 @@ void function RM_SaveConfig(){
  */
 
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
-	// check if victim is attacker or if its a replay
+	// death pits, etc where either one isnt a player
+	if(!attacker.IsPlayer() || !victim.IsPlayer()){
+		return
+	}
+
+	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
 		return // REM
 	}
