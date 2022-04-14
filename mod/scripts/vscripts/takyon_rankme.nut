@@ -158,11 +158,14 @@ void function RM_SaveConfig(){
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// check if victim is attacker or if its a replay
 	if(victim.GetUID() == attacker.GetUID()){
-		return // REM
+		//return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
-	bool noscope = attacker.GetZoomFrac() < 0.2 // leave a bit of room i guess, not workin on longer shots tho
+	bool noscope = false
+	try{ // have to do try catch for kill cmd or else crash
+		noscope = attacker.GetZoomFrac() < 0.2 && DamageInfo_GetWeapon(damageInfo).GetWeaponClassName() == "mp_weapon_sniper"   // leave a bit of room i guess, not workin on longer shots tho
+	} catch(e){}
 	int dist = ((DamageInfo_GetDistFromAttackOrigin(damageInfo) * 0.01904 * (4/3)) * 3.28084).tointeger()
 	int speed = GetPlayerSpeedInKmh(attacker).tointeger()
 
