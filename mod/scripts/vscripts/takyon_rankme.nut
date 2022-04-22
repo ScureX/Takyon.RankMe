@@ -178,12 +178,12 @@ void function RM_SaveConfig(){
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// death pits, etc where either one isnt a player
 	if(!attacker.IsPlayer() || !victim.IsPlayer()){
-		//return
+		return
 	}
 
 	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
-		//return // REM
+		return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
