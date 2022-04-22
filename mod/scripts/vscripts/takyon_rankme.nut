@@ -178,12 +178,12 @@ void function RM_SaveConfig(){
 void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	// death pits, etc where either one isnt a player
 	if(!attacker.IsPlayer() || !victim.IsPlayer()){
-		return
+		//return
 	}
 
 	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
-		return // REM
+		//return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
@@ -196,18 +196,51 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 	int attackerPoints = 0
 	int victimPoints = 0
 
+	int pointExchange = 0
+
 	bool showMsgToVictim = true
 	bool showMsgToAttacker = true
 
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
+			if(victim.GetUID() == pd.uid) // find victim's data // REM
+				victimPoints = pd.points
+
+			if(attacker.GetUID() == pd.uid){ // find attacker's data // REM
+				attackerPoints = pd.points
+				attackerPointsBefore = pd.points
+			}
+		
+		}catch(e){print("[RankMe] couldnt save points: " + e); return;}
+	}
+
+	int diff = attackerPoints - victimPoints 
+
+	// winner has less points
+	if(diff <= -1200) // winner has 1200 points less
+		pointExchange = 8
+	else if(diff <= -350) // winner has 350 to 1200 points less
+		pointExchange = 7
+	else if(diff < 0) // winner has 1 to 350 points less
+		pointExchange = 6
+	
+	// winner has more points
+	else if(diff >= 1200) // winner has 1200 points more
+		pointExchange = 3
+	else if(diff >= 350) // winner has 350 to 1200 points more
+		pointExchange = 4
+	else if(diff >= 0) // winner has 0 to 350 points more
+		pointExchange = 5
+		
+	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
+		try{
+			// actually add the points
 			if(victim.GetUID() == pd.uid){ // find victim's data // REM
 				showMsgToVictim = pd.track && pd.pointFeed
 				if(pd.track){
 					pd.deaths++
-					pd.points -= 3
+					pd.points -= pointExchange
 					victimPoints = pd.points
-					
 				}
 			}
 
@@ -216,7 +249,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 				if(pd.track){
 					pd.kills++
 					attackerPointsBefore = pd.points
-					pd.points += 3
+					pd.points += pointExchange
 					if(noscope && dist >= 50) pd.points += 1 // 1 extra for noscopes above 50m
 					if(headshot) pd.points += 1 // 1 extra for headshots
 					if(speed > 100) pd.points += 1 // 1 extra for being fast
@@ -229,16 +262,16 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	// kill modifiers
 	string killModifiers = format("[%s%s]", headshot ? "-HS-" : "-", noscope ? "NS-" : "")
-
+	
 	// message players
 	if(showMsgToVictim){
-		Chat_ServerPrivateMessage(victim, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
-		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
+		Chat_ServerPrivateMessage(victim, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;220;20;20m-%i\x1b[0m) |  (\x1b[38;2;0;220;30m%im\x1b[0m)", 
+		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, pointExchange, dist), false)
 	}
 		
 	if(showMsgToAttacker)
-		Chat_ServerPrivateMessage(attacker, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;0;220;30m%im\x1b[0m)", 
-		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, dist), false)
+		Chat_ServerPrivateMessage(attacker, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;220;20;20m-%i\x1b[0m) | (\x1b[38;2;0;220;30m%im\x1b[0m)", 
+		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, pointExchange, dist), false)
 	
 	RM_SaveConfig()
 }
