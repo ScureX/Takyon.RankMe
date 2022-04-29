@@ -183,7 +183,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
-		//return // REM
+		return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
