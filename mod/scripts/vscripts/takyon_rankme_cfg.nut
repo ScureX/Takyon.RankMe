@@ -3,7 +3,7 @@ global array<RM_PlayerData> rm_cfg_players = []
 
 void function RM_CfgInit(){
 rm_cfg_players.clear()
-AddPlayer("Takyon_Scure", "1006880507304", 82, 31, 21217, true, true)
+AddPlayer("Takyon_Scure", "1006880507304", 83, 32, 21218, true, true)
 AddPlayer("Robertineau", "2829239308", 0, 2, 994, true, true)
 AddPlayer("TAAWERZ", "1008142882244", 12, 15, 992, true, true)
 AddPlayer("darthelmo10", "1009099551543", 35, 16, 1072, true, true)

@@ -183,7 +183,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	// check if victim is attacker 
 	if(victim.GetUID() == attacker.GetUID()){
-		return // REM
+		//return // REM
 	}
 
 	bool headshot = DamageInfo_GetHitGroup( damageInfo ) == 1  // Head group i think
@@ -200,7 +200,9 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 
 	bool showMsgToVictim = true
 	bool showMsgToAttacker = true
+	bool victimTrack = true
 
+	// get elo info for point calculation
 	foreach(RM_PlayerData pd in rm_playerData){ // loop through live data
 		try{
 			if(victim.GetUID() == pd.uid) // find victim's data // REM
@@ -237,6 +239,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 			// actually add the points
 			if(victim.GetUID() == pd.uid){ // find victim's data // REM
 				showMsgToVictim = pd.track && pd.pointFeed
+				victimTrack = pd.track
 				if(pd.track){
 					pd.deaths++
 					pd.points -= pointExchange
@@ -271,7 +274,7 @@ void function RM_OnPlayerKilled(entity victim, entity attacker, var damageInfo){
 		
 	if(showMsgToAttacker)
 		Chat_ServerPrivateMessage(attacker, format("%s (\x1b[38;2;0;220;30m%i\x1b[0m) got \x1b[38;2;0;220;30m%i \x1b[0mPoints \x1b[38;2;220;20;20m%s \x1b[0mfor killing %s (\x1b[38;2;0;220;30m%i\x1b[0m) (\x1b[38;2;220;20;20m-%i\x1b[0m) | (\x1b[38;2;0;220;30m%im\x1b[0m)", 
-		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, pointExchange, dist), false)
+		attacker.GetPlayerName(), attackerPoints, attackerPoints-attackerPointsBefore, killModifiers, victim.GetPlayerName(), victimPoints, victimTrack ? pointExchange : 0, dist), false)
 	
 	RM_SaveConfig()
 }
